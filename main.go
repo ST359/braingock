@@ -36,9 +36,8 @@ func (c *Converter) output(w io.Writer) {
 	}
 }
 func (c *Converter) incrementCurrentCellBy(diff int) {
-	//TODO: here or somewhere else there is an error: asdfgh outputs odhfga
-	//maybe try to ease the "optimizations" a bit
-	absDiff := int(math.Abs(float64(diff)))
+
+	absDiff := absInt(diff)
 	divisor := calculateElegantDivisor(absDiff)
 	diffWasIncremented := false
 	if divisor == 1 {
@@ -114,6 +113,74 @@ func average(i []int) int {
 	}
 	return int(sum / len(i))
 }
+func (c *Converter) prepareInitialMem2(v []int) {
+	//TODO: outputs the same char for some reason
+	numOfCells := len(v)
+	avgVal := average(v)
+	//calculate the most elegant divisor for avgVal
+	//it is needed to make number of "+" outside loop
+	//roghly equal to + inside loop
+	m := calculateElegantDivisor(avgVal)
+	if m == 1 {
+		avgVal++
+		m = calculateElegantDivisor(avgVal)
+	}
+	n := avgVal / m
+	//num of chars +1 to store m dynamically
+	for range numOfCells + 1 {
+		c.outBuf.WriteByte('>')
+		c.currCell++
+	}
+	//store num of chars
+	for range numOfCells {
+		c.outBuf.WriteByte('+')
+	}
+	//start outer loop
+	c.outBuf.WriteByte('[')
+	//go to the first empty space on the left and then one more to setup m
+	//currCell will be dynamic, need to just evaluate to the len(v)+1 in the end
+	c.outBuf.Write([]byte{'[', '<', ']', '<'})
+	for range m {
+		c.outBuf.WriteByte('+')
+	}
+	//loop for incrementing the cell
+	c.outBuf.Write([]byte{'[', '>'})
+	for range n {
+		c.outBuf.WriteByte('+')
+	}
+	c.outBuf.Write([]byte{'<', '-', ']'})
+	//go to fresh char(we stopped at m) and then to first empty, one to the left is numofchars
+	c.outBuf.Write([]byte{'>', '[', '>', ']', '<', '-'})
+	//close outer loop, we now are on cell which was set up for storing num of chars
+	c.outBuf.WriteByte(']')
+	c.currLoopCounter = 0
+	//return to the 0th cell, alternative is in the next section go < instead of >
+	c.outBuf.Write([]byte{'<', '[', '<', ']'})
+	c.currCell = 0
+	for _, val := range v {
+		diff := val - avgVal
+		c.currCell++
+		c.outBuf.WriteByte('>')
+		if diff != 0 {
+			//loop can be huge if we need to go long way to the counter; 3 is for [ ] and -
+			if absInt(diff) >= 12 && absInt(diff) > c.currCell*2+3 {
+				c.incrementCurrentCellBy(diff)
+			} else {
+				for range absInt(diff) {
+					//if val is *higher* than average
+					if diff > 0 {
+						c.outBuf.WriteByte('+')
+					} else {
+						c.outBuf.WriteByte('-')
+					}
+				}
+			}
+		}
+		c.mem[val] = c.currCell //0-th cell used for init loop
+	}
+}
+
+// first version
 func (c *Converter) prepareInitialMem(v []int) {
 	numOfCells := len(v)
 	avgVal := average(v)
@@ -190,24 +257,6 @@ func (c *Converter) preparePrintingPart(input string) {
 	}
 }
 
-func gcd(a, b int) int {
-	for b != 0 {
-		a, b = b, a%b
-	}
-	return a
-}
-
-func gcdMap(m map[int]struct{}) int {
-	result := 0
-	for k := range m {
-		if result == 0 {
-			result = k
-		}
-		result = gcd(result, k)
-	}
-	return result
-}
-
 func main() {
 	var input string
 	fmt.Println("Type something to convert into brainfuck code")
@@ -215,12 +264,6 @@ func main() {
 	if scanner.Scan() {
 		input = scanner.Text()
 	}
-	f, err := os.Create("bfout.txt")
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	defer f.Close()
-	fmt.Print(input)
 	conv := new(Converter)
 	conv.charset = make(map[int]struct{})
 	conv.mem = make(map[int]int)
@@ -232,9 +275,7 @@ func main() {
 	for v := range conv.charset {
 		charslc = append(charslc, v)
 	}
-	//fmt.Println(charslc)
-	conv.prepareInitialMem(charslc)
+	conv.prepareInitialMem2(charslc)
 	conv.preparePrintingPart(input)
 	conv.output(os.Stdout)
-	conv.output(f)
 }
