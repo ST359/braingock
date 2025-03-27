@@ -24,6 +24,7 @@ func calculateElegantDivisor(val int) int {
 	return divisor
 }
 func TranslateToBf(in string) string {
+	fmt.Println("recieved input: ", in)
 	conv := new(Converter)
 	conv.charset = make(map[int]struct{})
 	conv.mem = make(map[int]int)
