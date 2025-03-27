@@ -12,9 +12,9 @@ import (
 func calculateElegantDivisor(val int) int {
 
 	divisor := int(math.Ceil(math.Sqrt(float64(val))))
-	for divisor > 1 {
+	for divisor >= 1 {
 		if val%divisor == 0 {
-			break
+			return divisor
 		}
 		divisor -= 1
 	}
@@ -30,18 +30,41 @@ type Converter struct {
 }
 
 func (c *Converter) output(w io.Writer) {
-	w.Write(c.outBuf.Bytes())
+	_, err := w.Write(c.outBuf.Bytes())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
 func (c *Converter) incrementCurrentCellBy(diff int) {
-	//TODO: need to calculate difference between current loop counter and divisor and change loop counter by this difference
-	divisor := calculateElegantDivisor(diff)
-	quotient := int(diff / divisor)
-	//point to counter cell
-	for range c.currCell {
-		c.outBuf.WriteByte('<')
+	//TODO: here or somewhere else there is an error: asdfgh outputs odhfga
+	//maybe try to ease the "optimizations" a bit
+	absDiff := int(math.Abs(float64(diff)))
+	divisor := calculateElegantDivisor(absDiff)
+	diffWasIncremented := false
+	if divisor == 1 {
+		absDiff++
+		divisor = calculateElegantDivisor(absDiff)
+		diffWasIncremented = true
 	}
-	for range divisor {
-		c.outBuf.WriteByte('+')
+	quotient := int(absDiff / divisor)
+	//point to counter cell, however, if last action was to walk from pointer to cell, just remove x of >'s
+	recentChars := c.outBuf.Bytes()[c.outBuf.Len()-c.currCell:]
+	if string(recentChars) == string(bytes.Repeat([]byte{'>'}, c.currCell)) {
+		c.outBuf.Truncate(c.outBuf.Len() - c.currCell)
+	} else {
+		for range c.currCell {
+			c.outBuf.WriteByte('<')
+		}
+	}
+	//we need to make loop counter equal to *divisor*
+	for c.currLoopCounter != divisor {
+		if c.currLoopCounter > divisor {
+			c.outBuf.WriteByte('-')
+			c.currLoopCounter--
+		} else if c.currLoopCounter < divisor {
+			c.outBuf.WriteByte('+')
+			c.currLoopCounter++
+		}
 	}
 	c.outBuf.WriteByte('[')
 	//walk from counter cell back to cell which we need to increment
@@ -50,16 +73,38 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 	}
 	//"multiply"
 	for range quotient {
-		c.outBuf.WriteByte('+')
+		if diff < 0 {
+
+			c.outBuf.WriteByte('-')
+		} else {
+			c.outBuf.WriteByte('+')
+
+		}
 	}
 	//point to counter cell to decrement it
 	for range c.currCell {
 		c.outBuf.WriteByte('<')
 	}
+	//this will set currLoopCounter to 0 effectively
+	c.currLoopCounter = 0
 	c.outBuf.Write([]byte{'-', ']'})
 	//return to currCell
 	for range c.currCell {
 		c.outBuf.WriteByte('>')
+	}
+	if diffWasIncremented {
+		if diff < 0 {
+			c.outBuf.WriteByte('+')
+		} else {
+			c.outBuf.WriteByte('-')
+		}
+	}
+}
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	} else {
+		return x
 	}
 }
 func average(i []int) int {
@@ -69,7 +114,7 @@ func average(i []int) int {
 	}
 	return int(sum / len(i))
 }
-func (c *Converter) incrementCellsToValue(v ...int) {
+func (c *Converter) prepareInitialMem(v []int) {
 	numOfCells := len(v)
 	avgVal := average(v)
 	//calculate the most elegant divisor for avgVal
@@ -82,14 +127,15 @@ func (c *Converter) incrementCellsToValue(v ...int) {
 	}
 	//prepare loop repeats
 	for range divisor {
+		c.currLoopCounter++
 		c.outBuf.WriteByte('+')
 	}
 	//dont forget to increment and decrement current cell
 	c.outBuf.Write([]byte{'[', '>'})
 	c.currCell++
-	increments := avgVal / divisor
+	quotient := avgVal / divisor
 	for range numOfCells {
-		for range increments {
+		for range quotient {
 			c.outBuf.WriteByte('+')
 		}
 		c.outBuf.WriteByte('>')
@@ -99,23 +145,25 @@ func (c *Converter) incrementCellsToValue(v ...int) {
 		c.outBuf.WriteByte('<')
 		c.currCell -= 1
 	}
+	//adding - to the end of the loop decreases currLoopCounter to 0 in fact
+	c.currLoopCounter = 0
 	c.outBuf.Write([]byte{'-', ']'})
 	for i, val := range v {
-		if val > avgVal {
+		diff := val - avgVal
+		if diff != 0 {
 			c.currCell++
 			c.outBuf.WriteByte('>')
-			if val-avgVal >= 15 {
-				c.incrementCurrentCellBy(val - avgVal)
+			//loop can be huge if we need to go long way to the counter; 3 is for [ ] and -
+			if absInt(diff) >= 12 && absInt(diff) > c.currCell*2+3 {
+				c.incrementCurrentCellBy(diff)
 			} else {
-				for range val - avgVal {
-					c.outBuf.WriteByte('+')
+				for range absInt(diff) {
+					if diff > 0 {
+						c.outBuf.WriteByte('-')
+					} else {
+						c.outBuf.WriteByte('+')
+					}
 				}
-			}
-		} else if val < avgVal {
-			c.currCell++
-			c.outBuf.WriteByte('>')
-			for range avgVal - val {
-				c.outBuf.WriteByte('-')
 			}
 		}
 		c.mem[val] = i + 1 //0-th cell used for init loop
@@ -167,6 +215,11 @@ func main() {
 	if scanner.Scan() {
 		input = scanner.Text()
 	}
+	f, err := os.Create("bfout.txt")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	defer f.Close()
 	fmt.Print(input)
 	conv := new(Converter)
 	conv.charset = make(map[int]struct{})
@@ -179,8 +232,9 @@ func main() {
 	for v := range conv.charset {
 		charslc = append(charslc, v)
 	}
-	fmt.Println(charslc)
-	conv.incrementCellsToValue(charslc...)
+	//fmt.Println(charslc)
+	conv.prepareInitialMem(charslc)
 	conv.preparePrintingPart(input)
 	conv.output(os.Stdout)
+	conv.output(f)
 }
