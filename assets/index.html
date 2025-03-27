@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<script src="wasm_exec.js"></script>
+		<script>
+			const go = new Go();
+			WebAssembly.instantiateStreaming(fetch("braingock.wasm"), go.importObject).then((result) => {
+				go.run(result.instance);
+			});
+		</script>
+	</head>
+	<body>
+    <textarea id="bfinput" name="bfinput" placeholder="Enter some text to traslate to Brainfuck code" cols="80" rows="20"></textarea>
+    <input type="sumbit" name="button" value="Translate to Brainfuck" onclick="translate(bfinput.value)"/>
+    <textarea id="bfoutput" name="bfoutput" cols="80" rows="20"></textarea>
+  </body>
+  <script>
+  var translate = function(input){
+    bfoutput.value = TranslateToBf(input)
+  }
+  </script>
+</html>

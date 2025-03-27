@@ -1,12 +1,15 @@
+//go:build js && wasm
+
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"math"
-	"os"
+	//"os"
+	"syscall/js"
 )
 
 func calculateElegantDivisor(val int) int {
@@ -19,6 +22,31 @@ func calculateElegantDivisor(val int) int {
 		divisor -= 1
 	}
 	return divisor
+}
+func TranslateToBf(in string) string {
+	conv := new(Converter)
+	conv.charset = make(map[int]struct{})
+	conv.mem = make(map[int]int)
+	for _, v := range in {
+		fmt.Print(int(v))
+		conv.charset[int(v)] = struct{}{}
+	}
+	charslc := make([]int, 0)
+	for v := range conv.charset {
+		charslc = append(charslc, v)
+	}
+	conv.prepareInitialMem2(charslc)
+	conv.preparePrintingPart(in)
+	return conv.outBuf.String()
+}
+
+func jsWrapper() js.Func {
+	resFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
+		in := args[0].String()
+		translated := TranslateToBf(in)
+		return translated
+	})
+	return resFunc
 }
 
 type Converter struct {
@@ -258,24 +286,26 @@ func (c *Converter) preparePrintingPart(input string) {
 }
 
 func main() {
-	var input string
-	fmt.Println("Type something to convert into brainfuck code")
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		input = scanner.Text()
-	}
-	conv := new(Converter)
-	conv.charset = make(map[int]struct{})
-	conv.mem = make(map[int]int)
-	for _, v := range input {
-		fmt.Print(int(v))
-		conv.charset[int(v)] = struct{}{}
-	}
-	charslc := make([]int, 0)
-	for v := range conv.charset {
-		charslc = append(charslc, v)
-	}
-	conv.prepareInitialMem2(charslc)
-	conv.preparePrintingPart(input)
-	conv.output(os.Stdout)
+	// var input string
+	// fmt.Println("Type something to convert into brainfuck code")
+	// scanner := bufio.NewScanner(os.Stdin)
+	// if scanner.Scan() {
+	// 	input = scanner.Text()
+	// }
+	// conv := new(Converter)
+	// conv.charset = make(map[int]struct{})
+	// conv.mem = make(map[int]int)
+	// for _, v := range input {
+	// 	fmt.Print(int(v))
+	// 	conv.charset[int(v)] = struct{}{}
+	// }
+	// charslc := make([]int, 0)
+	// for v := range conv.charset {
+	// 	charslc = append(charslc, v)
+	// }
+	// conv.prepareInitialMem2(charslc)
+	// conv.preparePrintingPart(input)
+	// conv.output(os.Stdout)
+	js.Global().Set("TranslateToBf", jsWrapper())
+	<-make(chan struct{})
 }
