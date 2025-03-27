@@ -27,8 +27,7 @@ func TranslateToBf(in string) string {
 	conv := new(Converter)
 	conv.charset = make(map[int]struct{})
 	conv.mem = make(map[int]int)
-	for _, v := range in {
-		fmt.Print(int(v))
+	for _, v := range []rune(in) {
 		conv.charset[int(v)] = struct{}{}
 	}
 	charslc := make([]int, 0)
@@ -37,7 +36,8 @@ func TranslateToBf(in string) string {
 	}
 	conv.prepareInitialMem2(charslc)
 	conv.preparePrintingPart(in)
-	return conv.outBuf.String()
+	res := conv.outBuf.String()
+	return res
 }
 
 func jsWrapper() js.Func {
@@ -142,7 +142,6 @@ func average(i []int) int {
 	return int(sum / len(i))
 }
 func (c *Converter) prepareInitialMem2(v []int) {
-	//TODO: outputs the same char for some reason
 	numOfCells := len(v)
 	avgVal := average(v)
 	//calculate the most elegant divisor for avgVal
