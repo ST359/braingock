@@ -6,7 +6,7 @@ import (
 	//"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	//"io"
 	"math"
 	//"os"
 	"syscall/js"
@@ -58,12 +58,6 @@ type Converter struct {
 	outBuf          bytes.Buffer
 }
 
-func (c *Converter) output(w io.Writer) {
-	_, err := w.Write(c.outBuf.Bytes())
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-}
 func (c *Converter) incrementCurrentCellBy(diff int) {
 
 	absDiff := absInt(diff)
@@ -76,13 +70,12 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 	}
 	quotient := int(absDiff / divisor)
 	//point to counter cell, however, if last action was to walk from pointer to cell, just remove x of >'s
-	recentChars := c.outBuf.Bytes()[c.outBuf.Len()-c.currCell:]
-	if string(recentChars) == string(bytes.Repeat([]byte{'>'}, c.currCell)) {
-		c.outBuf.Truncate(c.outBuf.Len() - c.currCell)
+	recentChars := c.outBuf.Bytes()[c.outBuf.Len()-c.currCell+1:]
+	if string(recentChars) == string(bytes.Repeat([]byte{'>'}, c.currCell-1)) {
+		c.outBuf.Truncate(c.outBuf.Len() - c.currCell + 1)
 	} else {
-		for range c.currCell {
-			c.outBuf.WriteByte('<')
-		}
+		//return to counter cell which should be 0
+		c.outBuf.Write([]byte{'[', '<', ']'})
 	}
 	//we need to make loop counter equal to *divisor*
 	for c.currLoopCounter != divisor {
@@ -96,28 +89,33 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 	}
 	c.outBuf.WriteByte('[')
 	//walk from counter cell back to cell which we need to increment
-	for range c.currCell {
+	//can optimize this to be [>]<<< if currCell is further from 1st(counter) cell than from last cell+3
+	//[>] goto last+1 <<<go to currCell
+	for range c.currCell - 1 {
 		c.outBuf.WriteByte('>')
 	}
 	//"multiply"
 	for range quotient {
 		if diff < 0 {
-
 			c.outBuf.WriteByte('-')
 		} else {
 			c.outBuf.WriteByte('+')
-
 		}
 	}
 	//point to counter cell to decrement it
-	for range c.currCell {
-		c.outBuf.WriteByte('<')
+	//if counter is futher than 4 cells ([<]>) optimize
+	if c.currCell > 4 {
+		c.outBuf.Write([]byte{'[', '<', ']', '>'})
+	} else {
+		for range c.currCell - 1 {
+			c.outBuf.WriteByte('<')
+		}
 	}
 	//this will set currLoopCounter to 0 effectively
 	c.currLoopCounter = 0
 	c.outBuf.Write([]byte{'-', ']'})
 	//return to currCell
-	for range c.currCell {
+	for range c.currCell - 1 {
 		c.outBuf.WriteByte('>')
 	}
 	if diffWasIncremented {
@@ -154,8 +152,8 @@ func (c *Converter) prepareInitialMem2(v []int) {
 		m = calculateElegantDivisor(avgVal)
 	}
 	n := avgVal / m
-	//num of chars +1 to store m dynamically
-	for range numOfCells + 1 {
+	//num of chars +2 to store m dynamically and leave anchor 0 cell
+	for range numOfCells + 2 {
 		c.outBuf.WriteByte('>')
 		c.currCell++
 	}
@@ -182,16 +180,16 @@ func (c *Converter) prepareInitialMem2(v []int) {
 	//close outer loop, we now are on cell which was set up for storing num of chars
 	c.outBuf.WriteByte(']')
 	c.currLoopCounter = 0
-	//return to the 0th cell, alternative is in the next section go < instead of >
+	//return to the 1st(loopCounter) cell, alternative is in the next section go < instead of >
 	c.outBuf.Write([]byte{'<', '[', '<', ']'})
-	c.currCell = 0
+	c.currCell = 1
 	for _, val := range v {
 		diff := val - avgVal
 		c.currCell++
 		c.outBuf.WriteByte('>')
 		if diff != 0 {
 			//loop can be huge if we need to go long way to the counter; 3 is for [ ] and -
-			if absInt(diff) >= 12 && absInt(diff) > c.currCell*2+3 {
+			if absInt(diff) >= 12 && absInt(diff) > c.currCell+3 {
 				c.incrementCurrentCellBy(diff)
 			} else {
 				for range absInt(diff) {
