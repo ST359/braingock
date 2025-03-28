@@ -74,7 +74,7 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 	if string(recentChars) == string(bytes.Repeat([]byte{'>'}, c.currCell-1)) {
 		c.outBuf.Truncate(c.outBuf.Len() - c.currCell + 1)
 	} else {
-		//return to counter cell which should be 0
+		//return to counter cell which should be equal to 0
 		c.outBuf.Write([]byte{'[', '<', ']'})
 	}
 	//we need to make loop counter equal to *divisor*
@@ -91,8 +91,16 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 	//walk from counter cell back to cell which we need to increment
 	//can optimize this to be [>]<<< if currCell is further from 1st(counter) cell than from last cell+3
 	//[>] goto last+1 <<<go to currCell
-	for range c.currCell - 1 {
-		c.outBuf.WriteByte('>')
+	distanceToTheCellFromTheEnd := len(c.charset) + 2 - c.currCell //there are 2 cells at the beginning and we will arrive at empty
+	if c.currCell-1 > distanceToTheCellFromTheEnd+3 {              //dist < and [>] symbols
+		c.outBuf.Write([]byte{'[', '>', ']'})
+		for range distanceToTheCellFromTheEnd {
+			c.outBuf.WriteByte('<')
+		}
+	} else {
+		for range c.currCell - 1 {
+			c.outBuf.WriteByte('>')
+		}
 	}
 	//"multiply"
 	for range quotient {
@@ -103,7 +111,6 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 		}
 	}
 	//point to counter cell to decrement it
-	//if counter is futher than 4 cells ([<]>) optimize
 	if c.currCell > 4 {
 		c.outBuf.Write([]byte{'[', '<', ']', '>'})
 	} else {
@@ -111,12 +118,20 @@ func (c *Converter) incrementCurrentCellBy(diff int) {
 			c.outBuf.WriteByte('<')
 		}
 	}
-	//this will set currLoopCounter to 0 effectively
+	//decrement loop counter, this will after loop set it to 0
+	c.outBuf.WriteByte('-')
 	c.currLoopCounter = 0
-	c.outBuf.Write([]byte{'-', ']'})
-	//return to currCell
-	for range c.currCell - 1 {
-		c.outBuf.WriteByte('>')
+	c.outBuf.WriteByte(']')
+	//in the end we are on counter cell
+	if c.currCell-1 > distanceToTheCellFromTheEnd+4 { //dist < and >[>] symbols
+		c.outBuf.Write([]byte{'>', '[', '>', ']'})
+		for range distanceToTheCellFromTheEnd {
+			c.outBuf.WriteByte('<')
+		}
+	} else {
+		for range c.currCell - 1 {
+			c.outBuf.WriteByte('>')
+		}
 	}
 	if diffWasIncremented {
 		if diff < 0 {
