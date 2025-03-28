@@ -2,29 +2,53 @@
 <html>
 <head>
     <meta charset="utf-8"/>
+    <link rel="stylesheet" type="text/css" href="styles.css">
     <script src="wasm_exec.js"></script>
     <script>
         const go = new Go();
         WebAssembly.instantiateStreaming(fetch("braingock.wasm"), go.importObject).then((result) => {
             go.run(result.instance);
-            document.getElementById("button").addEventListener("click", translate);
+            document.getElementById("bfinput").addEventListener("input", translate);
         });
 
         function translate() {  
-            try {
-                const input = document.getElementById("bfinput").value;
-                const result = TranslateToBf(input);
-                document.getElementById("bfoutput").value = result;
-                console.log(result);
-            } catch (error) {
-                console.error("Error calling TranslateToBf:", error);
+          try {
+            const input = document.getElementById("bfinput").value;
+            if (input.length<1){
+              document.getElementById("bfoutput").value = "";
+              return;
             }
+            const result = TranslateToBf(input);
+            document.getElementById("bfoutput").value = result;
+            console.log(result);
+          } catch (error) {
+            console.error(error);
+          }
         }
     </script>
 </head>
 <body>
-    <textarea id="bfinput" name="bfinput" placeholder="Enter some text to translate to Brainfuck code" cols="80" rows="20"></textarea>
-    <button id="button" type="button" name="button">Translate to BF</button>
-    <textarea id="bfoutput" name="bfoutput" cols="80" rows="20"></textarea>
+    <div class="container">
+        <div class="explanation">
+            <p>Text-to-brainfuck code translator for *non-wrapping* implementations</p>
+            <p>Optimized for bigger texts with many repeating chars, uses self-invented algo (can be seen in the first loop) to fill the "tape" with a set of characters provided.</p>
+            <p>Useful stuff:</p>
+            <ul>
+                <li>
+                    For wrapping-optimized translator check <a href="https://copy.sh/brainfuck/text.html" target="_blank">Brainfuck Text Translator</a>
+                </li>
+                <li>
+                    Use the <a href="https://copy.sh/brainfuck/" target="_blank">Brainfuck Interpreter</a> to run your Brainfuck code
+                </li>
+                <li>
+                    <a href="https://esolangs.org/wiki/Brainfuck" target="_blank">Brainfuck on esolangs.org</a>
+                </li>
+            </ul>
+        </div>
+        <div class="input-output">
+            <textarea id="bfinput" name="bfinput" placeholder="Enter some text to translate to Brainfuck code" cols="80" rows="20"></textarea>
+            <textarea id="bfoutput" name="bfoutput" cols="80" rows="20" readonly></textarea>
+        </div>
+    </div>
 </body>
 </html>

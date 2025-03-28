@@ -1,0 +1,73 @@
+
+body {
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    display: flex;
+    justify-content: center; /* Center the container */
+    padding: 20px; /* Add padding to the body */
+    height: 100vh;
+}
+
+.container {
+    display: flex; /* Use flexbox for layout */
+    max-width: 1200px; /* Limit the maximum width of the container */
+    width: 100%; /* Full width */
+    height: 100%;
+}
+
+.explanation {
+    background-color: #252526; /* Dark background for the explanation */
+    color: #d4d4d4; /* Light text color */
+    padding: 20px; /* Padding around the text */
+    border-radius: 5px; /* Rounded corners */
+    margin-right: 20px; /* Space between explanation and input/output */
+    flex: 1; /* Allow the explanation to take available space */
+}
+
+.input-output {
+    flex: 2; /* Allow the input/output section to take more space */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+textarea {
+    width: 100%; /* Full width of the container */
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    resize: none; 
+    font-size: 16px;
+    margin-bottom: 20px;
+    background-color: #252526;
+    color: #d4d4d4;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+p {
+    margin: 5px 0; 
+}
+
+ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+    list-style-type: disc;
+}
+
+.explanation a {
+    color: #66b3ff; /* A lighter blue for links */
+    text-decoration: none; /* Remove underline */
+}
+
+.explanation a:hover {
+    text-decoration: underline; /* Underline on hover */
+    color: #99ccff; /* Change color on hover for better visibility */
+}
+
+body > * {
+    margin: 10px 0;
+}
