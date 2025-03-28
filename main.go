@@ -279,19 +279,35 @@ func (c *Converter) prepareInitialMem(v []int) {
 }
 
 func (c *Converter) preparePrintingPart(input string) {
+	//at this moment currLoopCounter = 0 so [<] will bring us to the 2nd cell, [<]> to the first char
+	//and [>]< to the last char
 	for _, v := range input {
 		target := c.mem[int(v)]
-		if c.currCell > target {
-			diff := c.currCell - target
-			for range diff {
-				c.currCell--
+		distToTargetFromEnd := len(c.charset) + 2 - target
+		distToTargetFromStart := target - 1 //we will arrive at 2nd cell by [<]
+		diff := target - c.currCell
+		absDiff := absInt(diff)
+		if absDiff > distToTargetFromEnd+3 { //"[>]" chars
+			c.outBuf.Write([]byte{'[', '>', ']'})
+			for range distToTargetFromEnd {
 				c.outBuf.WriteByte('<')
 			}
-		} else if c.currCell < target {
-			diff := target - c.currCell
-			for range diff {
-				c.currCell++
+			c.currCell = target
+		} else if absDiff > distToTargetFromStart+3 { //"[<]" chars
+			c.outBuf.Write([]byte{'[', '<', ']'})
+			for range distToTargetFromStart {
 				c.outBuf.WriteByte('>')
+			}
+			c.currCell = target
+		} else {
+			for range absDiff {
+				if diff < 0 {
+					c.currCell--
+					c.outBuf.WriteByte('<')
+				} else if diff > 0 {
+					c.currCell++
+					c.outBuf.WriteByte('>')
+				}
 			}
 		}
 		c.outBuf.WriteByte('.')
