@@ -3,12 +3,8 @@
 package main
 
 import (
-	//"bufio"
 	"bytes"
-	"fmt"
-	//"io"
 	"math"
-	//"os"
 	"syscall/js"
 )
 
@@ -24,16 +20,15 @@ func calculateElegantDivisor(val int) int {
 	return divisor
 }
 func TranslateToBf(in string) string {
-	fmt.Println("recieved input: ", in)
 	conv := new(Converter)
 	conv.charset = make(map[int]struct{})
 	conv.mem = make(map[int]int)
-	for _, v := range []rune(in) {
-		conv.charset[int(v)] = struct{}{}
-	}
 	charslc := make([]int, 0)
-	for v := range conv.charset {
-		charslc = append(charslc, v)
+	for _, v := range []rune(in) {
+		if _, ok := conv.charset[int(v)]; !ok {
+			charslc = append(charslc, int(v))
+			conv.charset[int(v)] = struct{}{}
+		}
 	}
 	conv.prepareInitialMem2(charslc)
 	conv.preparePrintingPart(in)
